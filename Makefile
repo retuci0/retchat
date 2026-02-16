@@ -1,16 +1,29 @@
 CC = gcc
-CFLAGS = -Wall -pthread
+CFLAGS = -Wall -std=c99
+BINDIR = bin
+
+# detectar OS
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Linux)			# linux
+    LIBS = -pthread
+else ifeq ($(UNAME_S), Darwin)   	# mac
+    LIBS = -pthread
+else                              	# windows
+    LIBS = -pthread -lws2_32
+endif
+
+$(shell mkdir -p $(BINDIR))
+
 TARGETS = server client
 
 all: $(TARGETS)
 
-server: server.c
-	$(CC) $(CFLAGS) -o $@ $^
+%: %.c
+	$(CC) $(CFLAGS) -o $(BINDIR)/$@ $^ $(LIBS)
 
-client: client.c
-	$(CC) $(CFLAGS) -o $@ $^
+server: server.h
+client: # sin header
 
+.PHONY: clean
 clean:
-	rm -f $(TARGETS)
-
-.PHONY: all clean
+	rm -f $(addprefix $(BINDIR)/, $(TARGETS))

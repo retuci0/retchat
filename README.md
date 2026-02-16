@@ -8,12 +8,24 @@
 
 1. `git clone https://github.com/retuci0/retchat`
 2. `cd retchat`
-3. `make all`
+
+### compilar
+
+#### linux
+`make clean all`
+
+#### windows
+`.\win\compile_MINGW.bat` o `.\win\compile_MSVC.bat`
 
 ### ejecutar
 
-server: `./server`
-cliente(s): `./client <ip del server>`
+#### linux
+- server: `./bin/server`
+- cliente(s): `./bin/client <ip del server>`
+
+#### windows
+- server: abrir `bin/server.exe`
+- cliente: abrir `bin/client.exe` (o desde la terminal para especificar IP del server)
 
 ### comandos
 
