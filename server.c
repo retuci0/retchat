@@ -2,19 +2,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 
 #ifdef _WIN32
-#include <windows.h>
-#include <process.h>            // para _beginthreadex
-#define strcasecmp _stricmp
-#pragma comment(lib, "ws2_32.lib")
+    #include <windows.h>
+    #include <ws2tcpip.h>
+    #include <process.h>            // para _beginthreadex
+    #define strcasecmp _stricmp
+    #pragma comment(lib, "ws2_32.lib")
 #else
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+    #include <unistd.h>
+    #include <pthread.h>
+    #include <strings.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
 #endif
 
 // #define PORT 6677
@@ -23,17 +24,17 @@
 
 /* MUTEX */
 #ifdef _WIN32
-static CRITICAL_SECTION clients_mutex;
-#define MUTEX_INIT()    InitializeCriticalSection(&clients_mutex)
-#define MUTEX_LOCK()    EnterCriticalSection(&clients_mutex)
-#define MUTEX_UNLOCK()  LeaveCriticalSection(&clients_mutex)
-#define MUTEX_DESTROY() DeleteCriticalSection(&clients_mutex)
+    static CRITICAL_SECTION clients_mutex;
+    #define MUTEX_INIT()    InitializeCriticalSection(&clients_mutex)
+    #define MUTEX_LOCK()    EnterCriticalSection(&clients_mutex)
+    #define MUTEX_UNLOCK()  LeaveCriticalSection(&clients_mutex)
+    #define MUTEX_DESTROY() DeleteCriticalSection(&clients_mutex)
 #else
-static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-#define MUTEX_INIT()    (void)0
-#define MUTEX_LOCK()    pthread_mutex_lock(&clients_mutex)
-#define MUTEX_UNLOCK()  pthread_mutex_unlock(&clients_mutex)
-#define MUTEX_DESTROY() pthread_mutex_destroy(&clients_mutex)
+    static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+    #define MUTEX_INIT()    (void)0
+    #define MUTEX_LOCK()    pthread_mutex_lock(&clients_mutex)
+    #define MUTEX_UNLOCK()  pthread_mutex_unlock(&clients_mutex)
+    #define MUTEX_DESTROY() pthread_mutex_destroy(&clients_mutex)
 #endif
 
 

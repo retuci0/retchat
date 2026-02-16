@@ -1,6 +1,6 @@
 # retchat
 
-> app de chat TCP/IP MUUUUY simple de terminal hecha en C, que te permite comunicarte con otros clientes conectados a la misma red
+> app de chat TCP/IP MUUUUY simple de terminal hecha en C, que te permite comunicarte con otros clientes conectados a la misma red, mediante salas
 
 ## uso
 
@@ -12,20 +12,25 @@
 ### compilar
 
 #### linux
-`make clean all`
+1. `make clean all`
 
 #### windows
-`.\win\compile_MINGW.bat` o `.\win\compile_MSVC.bat`
+1. `cd win`
+2. `.\compile_MINGW.bat` o `.\compile_MSVC.bat`
 
 ### ejecutar
 
+> los argumentos son opcionales,
+> - la ip por defecto es localhost (127.0.0.1)
+> - el puerto por defecto es 6677 (SIX SEVEN)
+
 #### linux
-- server: `./bin/server`
-- cliente(s): `./bin/client <ip del server>`
+- server: `./bin/server <puerto`
+- cliente(s): `./bin/client <ip local del server> <puerto>`
 
 #### windows
-- server: abrir `bin/server.exe`
-- cliente: abrir `bin/client.exe` (o desde la terminal para especificar IP del server)
+- server: `.\bin\server.exe <puerto>`
+- cliente(s): `.\bin\client.exe <ip local del server> <puerto>`
 
 ### comandos
 

@@ -3,22 +3,23 @@
 #include <string.h>
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <windows.h>
-#include <process.h>            // para _beginthreadex
-#pragma comment(lib, "ws2_32.lib")
-typedef SOCKET socket_t;
-#define CLOSE_SOCKET closesocket
-#define SOCKET_ERROR_RETURN INVALID_SOCKET
+    #include <winsock2.h>
+    #include <windows.h>
+    #include <ws2tcpip.h>
+    #include <process.h>            // para _beginthreadex
+    #pragma comment(lib, "ws2_32.lib")
+    typedef SOCKET socket_t;
+    #define CLOSE_SOCKET closesocket
+    #define SOCKET_ERROR_RETURN INVALID_SOCKET
 #else
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-typedef int socket_t;
-#define CLOSE_SOCKET close
-#define SOCKET_ERROR_RETURN -1
+    #include <unistd.h>
+    #include <pthread.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    typedef int socket_t;
+    #define CLOSE_SOCKET close
+    #define SOCKET_ERROR_RETURN -1
 #endif
 
 #define BUFFER_SIZE 1024
