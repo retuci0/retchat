@@ -1,0 +1,21 @@
+CC = gcc
+CFLAGS = -Wall -std=c99 -O2 -I../common
+LDFLAGS = -pthread
+TARGETS = server client
+BINDIR = ../bin
+
+all: $(TARGETS)
+
+$(BINDIR):
+	mkdir -p $(BINDIR)
+
+server: server.c ../common/crypto.c ../common/kdf.h | $(BINDIR)
+	$(CC) $(CFLAGS) -o $(BINDIR)/$@ server.c ../common/crypto.c $(LDFLAGS)
+
+client: client.c ../common/crypto.c ../common/kdf.h | $(BINDIR)
+	$(CC) $(CFLAGS) -o $(BINDIR)/$@ client.c ../common/crypto.c $(LDFLAGS)
+
+clean:
+	rm -rf $(BINDIR)
+
+.PHONY: all clean

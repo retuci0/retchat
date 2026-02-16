@@ -1,29 +1,15 @@
-CC = gcc
-CFLAGS = -Wall -std=c99
-BINDIR = bin
+.PHONY: all linux windows clean
 
-# detectar OS
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S), Linux)			# linux
-    LIBS = -pthread
-else ifeq ($(UNAME_S), Darwin)   	# mac
-    LIBS = -pthread
-else                              	# windows
-    LIBS = -pthread -lws2_32
-endif
+all: linux windows
 
-$(shell mkdir -p $(BINDIR))
+linux:
+	$(MAKE) -C linux -f Makefile.linux
 
-TARGETS = server client
+windows:
+	@echo "para Windows, usa los scripts en la carpeta windows/"
+	@echo "  compile_MINGW.bat  - para MinGW"
+	@echo "  compile_MSVC.bat   - para MSVC"
 
-all: $(TARGETS)
-
-%: %.c
-	$(CC) $(CFLAGS) -o $(BINDIR)/$@ $^ $(LIBS)
-
-server: server.h
-client: # sin header
-
-.PHONY: clean
 clean:
-	rm -f $(addprefix $(BINDIR)/, $(TARGETS))
+	$(MAKE) -C linux -f Makefile.linux clean
+	rm -rf bin/
