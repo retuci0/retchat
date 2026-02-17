@@ -6,13 +6,16 @@
 
 ### descargar
 
-1. `git clone https://github.com/retuci0/retchat`
+1. `git clone https://github.com/retuci0/retchat/`
 2. `cd retchat`
 
 ### compilar
 
 #### linux
 1. `make clean all`
+
+##### linux con GTK (interfaz)
+2. `make -C linux -f Makefile.linux client-gtk`
 
 #### windows
 1. `cd windows\`
@@ -27,6 +30,9 @@
 #### linux
 - server: `./bin/server <puerto>`
 - cliente(s): `./bin/client <ip local del server> <puerto>`
+
+##### con interfaz
+- cliente(s): `./bin/client-gtk <ip local del server> <puerto>`
 
 #### windows
 - server: `.\bin\server.exe <puerto>`

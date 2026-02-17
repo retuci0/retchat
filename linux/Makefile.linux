@@ -15,6 +15,9 @@ server: server.c ../common/crypto.c ../common/kdf.h | $(BINDIR)
 client: client.c ../common/crypto.c ../common/kdf.h | $(BINDIR)
 	$(CC) $(CFLAGS) -o $(BINDIR)/$@ client.c ../common/crypto.c $(LDFLAGS)
 
+client-gtk: gtk_client.c ../common/crypto.c ../common/kdf.h | $(BINDIR)
+	$(CC) $(CFLAGS) `pkg-config --cflags gtk+-3.0` -o $(BINDIR)/$@ gtk_client.c ../common/crypto.c $(LDFLAGS) `pkg-config --libs gtk+-3.0`
+
 clean:
 	rm -rf $(BINDIR)
 

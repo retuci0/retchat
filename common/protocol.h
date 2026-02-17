@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#define LOCALHOST "127.0.0.1"
 #define DEFAULT_PORT 6677
 #define BUFFER_SIZE 2048
 #define NAME_LEN 32

@@ -80,7 +80,8 @@ int is_username_taken(const char *username, const char *room, int exclude_sockfd
 }
 
 int is_forbidden_name(const char *name) {
-    return (strcasecmp(name, "TÚ") == 0);
+    return (strcasecmp(name, "TÚ") == 0)
+    || (strcasecmp(name, "SERVER") == 0);
 }
 
 /* hilo gestor de cliente */
