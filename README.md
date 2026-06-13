@@ -1,6 +1,6 @@
 # retchat
 
-> app de chat TCP/IP MUUUUY simple de terminal hecha en C, que te permite comunicarte con otros clientes conectados a la misma red, mediante salas. encriptación básica mediante XOR e intercambio de claves Diffie-Hellman.
+> app de chat TCP/IP MUUUUY simple de terminal hecha en C, que te permite comunicarte con otros clientes conectados a la misma red o remotamente, mediante salas. encriptación básica mediante SDHA256, XOR e intercambio de claves Diffie-Hellman.
 
 ## uso
 
@@ -11,15 +11,7 @@
 
 ### compilar
 
-#### linux
-1. `make clean all`
-
-##### linux con GTK (interfaz)
-2. `make -C linux -f Makefile.linux client-gtk`
-
-#### windows
-1. `cd windows\`
-2. `.\compile_MINGW.bat` o `.\compile_MSVC.bat`
+ `make clean all`
 
 ### ejecutar
 
@@ -27,16 +19,8 @@
 > - la ip por defecto es localhost (127.0.0.1)
 > - el puerto por defecto es 6677 (SIX SEVEN!!!)
 
-#### linux
-- server: `./bin/server <puerto>`
-- cliente(s): `./bin/client <ip local del server> <puerto>`
+- `./bin/server <puerto>`
 
-##### con interfaz
-- cliente(s): `./bin/client-gtk <ip local del server> <puerto>`
-
-#### windows
-- server: `.\bin\server.exe <puerto>`
-- cliente(s): `.\bin\client.exe <ip local del server> <puerto>`
 
 ### comandos
 

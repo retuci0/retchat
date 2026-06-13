@@ -18,6 +18,7 @@
 
 #define HEARTBEAT_SEC 30
 
+
 static int dh_handshake(int sock, uint8_t enc_key[KEY_LENGTH]) {
     BIGNUM* server_priv = BN_new();
     BIGNUM* server_pub  = BN_new();
@@ -40,7 +41,7 @@ static int dh_handshake(int sock, uint8_t enc_key[KEY_LENGTH]) {
     uint32_t net_len = htonl(pub_len);
 
     if (send(sock, &net_len, 4, 0) != 4 ||
-        send(sock, pub_buf, pub_len, 0) != (ssize_t)pub_len) {
+        send(sock, pub_buf, pub_len, 0) != (ssize_t) pub_len) {
         free(pub_buf);
         goto error;
     }
@@ -51,7 +52,7 @@ static int dh_handshake(int sock, uint8_t enc_key[KEY_LENGTH]) {
     if (pub_len > 4096) goto error;  // sanity check
     pub_buf = malloc(pub_len);
     if (!pub_buf) goto error;
-    if (recv(sock, pub_buf, pub_len, 0) != (ssize_t)pub_len) {
+    if (recv(sock, pub_buf, pub_len, 0) != (ssize_t) pub_len) {
         free(pub_buf);
         goto error;
     }
@@ -72,7 +73,7 @@ error:
 }
 
 void* client_handler(void* arg) {
-    int client_sock = *(int*)arg;
+    int client_sock = *((int*) arg);
     free(arg);
 
     struct timeval tv = { .tv_sec = HEARTBEAT_SEC, .tv_usec = 0 };
