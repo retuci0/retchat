@@ -47,11 +47,16 @@ namespace Retchat {
     }
 
     void Server::removeClient(Client* client) {
+        int cfd = client->getSockfd();
+        std::string cname = client->getName();
         std::lock_guard<std::mutex> lock(mutex);
         auto it = clients.find(client->getSockfd());
-        if (it != clients.end()) clients.erase(it);
-        getOrCreateRoom(client->getRoom()).removeClient(client);  // no double lock
+        if (it != clients.end()) {
+            clients.erase(it);
+        }
+        getOrCreateRoom(client->getRoom()).removeClient(client);
         delete client;
+        Logger::info(cname + "(" + std::to_string(cfd) + ") left.");
     }
 
     void Server::broadcastToRoom(const std::string& roomName, Client* exclude, const Packet& pkt) {

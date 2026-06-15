@@ -23,6 +23,20 @@ namespace Retchat {
     std::vector<uint8_t> serializeString(const std::string& str);
     std::string deserializeString(const uint8_t* data, size_t& offset);
 
+    
+    class KeepAlivePacket : public Packet {
+    public:
+        KeepAlivePacket() { type = PKT_KEEPALIVE; }
+        void serialize(std::vector<uint8_t>& out) const override;
+        bool deserialize(const uint8_t* data, size_t len) override;
+    };
+
+    class KeepAliveAckPacket : public Packet {
+    public:
+        KeepAliveAckPacket() { type = PKT_KEEPALIVE_ACK; }
+        void serialize(std::vector<uint8_t>& out) const override;
+        bool deserialize(const uint8_t* data, size_t len) override;
+    };
 
     class NickRequestPacket : public Packet {
     public:

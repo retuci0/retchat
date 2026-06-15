@@ -4,6 +4,7 @@
 #include "Logger.hpp"
 
 #include <algorithm>
+#include <string>
 
 
 namespace Retchat {
@@ -14,14 +15,14 @@ namespace Retchat {
         std::lock_guard<std::mutex> lock(mutex);
         if (std::find(clients.begin(), clients.end(), client) == clients.end()) {
             clients.push_back(client);
-            Logger::info(client->getName() + " joined room " + getName());
+            Logger::info(client->getName() + "(" + std::to_string(client->getSockfd()) + ") joined room " + getName());
         }
     }
 
     void Room::removeClient(Client* client) {
         std::lock_guard<std::mutex> lock(mutex);
         clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
-        Logger::info(client->getName() + " left room " + getName());
+        Logger::info(client->getName() + "(" + std::to_string(client->getSockfd()) + ") left room " + getName());
     }
 
     void Room::broadcast(const Packet& pkt, Client* exclude) {

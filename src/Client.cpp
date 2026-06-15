@@ -1,16 +1,19 @@
 #include "Client.hpp"
 
 #include "DiffieHellman.hpp"
+#include "Logger.hpp"
 #include "Server.hpp"
 
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+#include <chrono>
 #include <string>
 #include <unistd.h>
 #include <pthread.h>
 #include <arpa/inet.h>
+#include <poll.h>
 
 
 constexpr int MAX_NICK_LENGTH = 20;
@@ -20,6 +23,7 @@ namespace Retchat {
     Client::Client(int fd, Server* srv) : sockfd(fd), server(srv), sendCounter(0), recvCounter(0), connected(true) {
         name = "usuario" + std::to_string(fd);
         room = "lobby";
+        lastRecvTime = std::chrono::steady_clock::now();
     }
 
     Client::~Client() { close(sockfd); }
@@ -142,7 +146,7 @@ namespace Retchat {
 
     void Client::run() {
         if (!handshake()) {
-            disconnect();
+            server->removeClient(this);
             return;
         }
 
@@ -152,35 +156,87 @@ namespace Retchat {
         welcome.text = "buenas " + name + ", estás en la sala \"" + room + "\".";
         sendPacket(welcome);
 
-        // add client to their initial room
         server->getRoom(room).addClient(this);
 
-        // notify room
         JoinNotifyPacket joinNotify;
         joinNotify.nick = name;
         server->broadcastToRoom(room, this, joinNotify);
 
-        std::vector<uint8_t> plain;
-        while (connected && readFrame(plain)) {
-            if (plain.empty()) continue;
-            size_t off = 0;
-            uint8_t type = plain[off++];
-            Packet* pkt = Packet::create((PacketType)type);
-            if (pkt && pkt->deserialize(plain.data() + off, plain.size() - off)) {
-                processPacket(pkt);
-                delete pkt;
+        struct pollfd pfd;
+        pfd.fd = sockfd;
+        pfd.events = POLLIN;
+
+        constexpr int POLL_TIMEOUT_MS = 1000;  // check every second
+        constexpr int KEEPALIVE_INTERVAL_SEC = 30;
+        constexpr int KEEPALIVE_WAIT_SEC = 10;
+
+        while (connected) {
+            auto now = std::chrono::steady_clock::now();
+            double idleSec = std::chrono::duration<double>(now - lastRecvTime).count();
+
+            // If waiting for ack and timeout exceeded, disconnect
+            if (waitingForAck) {
+                double sinceSent = std::chrono::duration<double>(now - lastKeepAliveSent).count();
+                if (sinceSent > KEEPALIVE_WAIT_SEC) {
+                    Logger::warn("keepalive timeout, disconnecting " + name);
+                    break;
+                }
+            }
+
+            if (!waitingForAck && idleSec > KEEPALIVE_INTERVAL_SEC) {
+                KeepAlivePacket keep;
+                sendPacket(keep);
+                waitingForAck = true;
+                lastKeepAliveSent = now;
+            }
+
+            int ret = poll(&pfd, 1, POLL_TIMEOUT_MS);
+            if (ret < 0) {
+                if (errno == EINTR) continue;
+                break;
+            }
+
+            if (ret > 0 && (pfd.revents & POLLIN)) {
+                std::vector<uint8_t> plain;
+                if (readFrame(plain)) {
+                    if (!plain.empty()) {
+                        size_t off = 0;
+                        uint8_t type = plain[off++];
+                        Packet* pkt = Packet::create((PacketType)type);
+                        if (pkt && pkt->deserialize(plain.data() + off, plain.size() - off)) {
+                            processPacket(pkt);
+                            delete pkt;
+                        }
+                    }
+                    lastRecvTime = std::chrono::steady_clock::now();
+                } else {
+                    break;
+                }
             }
         }
 
         connected = false;
-        server->removeClient(this);
+
+        std::string n = name;
+        std::string r = room;
         LeaveNotifyPacket leaveNotify;
-        leaveNotify.nick = name;
-        server->broadcastToRoom(room, nullptr, leaveNotify);
+        leaveNotify.nick = n;
+        server->broadcastToRoom(r, nullptr, leaveNotify);
+
+        server->removeClient(this);
     }
 
     void Client::processPacket(Packet* pkt) {
         switch (pkt->type) {
+            case PKT_KEEPALIVE: {
+                KeepAliveAckPacket ack;
+                sendPacket(ack);
+                break;
+            }
+            case PKT_KEEPALIVE_ACK: {
+                waitingForAck = false;
+                break;
+            }
             case PKT_NICK_REQUEST: {
                 auto* req = (NickRequestPacket*)pkt;
                 std::string newNick = req->newNick;
@@ -268,7 +324,7 @@ namespace Retchat {
                 break;
             }
             case PKT_CHAT_MSG: {
-                auto* chat = (ChatPacket*)pkt;
+                auto* chat = (ChatPacket*) pkt;
                 ChatPacket broadcast;
                 broadcast.sender = name;
                 broadcast.text = chat->text;

@@ -1,4 +1,5 @@
 #include "Packet.hpp"
+#include "Protocol.hpp"
 
 #include <arpa/inet.h>
 #include <cstring>
@@ -31,20 +32,39 @@ namespace Retchat {
 
     Packet* Packet::create(PacketType type) {
         switch (type) {
-            case PKT_NICK_REQUEST: return new NickRequestPacket();
-            case PKT_NICK_ACK: return new NickAckPacket();
-            case PKT_NICK_NOTIFY: return new NickNotifyPacket();
-            case PKT_JOIN_REQUEST: return new JoinRequestPacket();
-            case PKT_JOIN_ACK: return new JoinAckPacket();
-            case PKT_JOIN_NOTIFY: return new JoinNotifyPacket();
-            case PKT_LEAVE_NOTIFY: return new LeaveNotifyPacket();
-            case PKT_ROOM_LIST: return new RoomListPacket();
-            case PKT_USER_LIST: return new UserListPacket();
-            case PKT_CHAT_MSG: return new ChatPacket();
-            case PKT_SYSTEM_MSG: return new SystemPacket();
-            case PKT_DISCONNECT: return new DisconnectPacket();
+            case PKT_KEEPALIVE:     return new KeepAliveAckPacket();
+            case PKT_KEEPALIVE_ACK: return new KeepAliveAckPacket();
+            case PKT_NICK_REQUEST:  return new NickRequestPacket();
+            case PKT_NICK_ACK:      return new NickAckPacket();
+            case PKT_NICK_NOTIFY:   return new NickNotifyPacket();
+            case PKT_JOIN_REQUEST:  return new JoinRequestPacket();
+            case PKT_JOIN_ACK:      return new JoinAckPacket();
+            case PKT_JOIN_NOTIFY:   return new JoinNotifyPacket();
+            case PKT_LEAVE_NOTIFY:  return new LeaveNotifyPacket();
+            case PKT_ROOM_LIST:     return new RoomListPacket();
+            case PKT_USER_LIST:     return new UserListPacket();
+            case PKT_CHAT_MSG:      return new ChatPacket();
+            case PKT_SYSTEM_MSG:    return new SystemPacket();
+            case PKT_DISCONNECT:    return new DisconnectPacket();
             default: return nullptr;
         }
+    }
+
+
+    // --- KeepAlivePacket ---
+    void KeepAlivePacket::serialize(std::vector<uint8_t>& out) const {
+        // no payload
+    }
+    bool KeepAlivePacket::deserialize(const uint8_t* data, size_t len) {
+        return len == 0;
+    }
+
+    // --- KeepAliveAckPacket ---
+    void KeepAliveAckPacket::serialize(std::vector<uint8_t>& out) const {
+        // no payload
+    }
+    bool KeepAliveAckPacket::deserialize(const uint8_t* data, size_t len) {
+        return len == 0;
     }
 
     // --- NickRequestPacket ---

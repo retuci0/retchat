@@ -2,6 +2,7 @@
 
 #include "Packet.hpp"
 
+#include <chrono>
 #include <netinet/in.h>
 #include <string>
 #include <vector>
@@ -41,6 +42,11 @@ namespace Retchat {
         uint64_t sendCounter, recvCounter;
         bool connected;
         std::mutex sendMutex;
+
+        // keepalive
+        std::chrono::steady_clock::time_point lastRecvTime;
+        std::chrono::steady_clock::time_point lastKeepAliveSent;
+        bool waitingForAck = false;
     };
 
 }
