@@ -2,3 +2,4 @@ todo.txt
 bin/
 .project
 *.o
+build/
