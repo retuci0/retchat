@@ -134,4 +134,38 @@ namespace Retchat {
         bool deserialize(const uint8_t* data, size_t len) override;
     };
 
+    class KickPacket : public Packet {
+    public:
+        std::string reason;
+        KickPacket() { type = PKT_KICK; }
+        void serialize(std::vector<uint8_t>& out) const override;
+        bool deserialize(const uint8_t* data, size_t len) override;
+    };
+
+    class BanPacket : public Packet {
+    public:
+        std::string reason;
+        BanPacket() { type = PKT_BAN; }
+        void serialize(std::vector<uint8_t>& out) const override;
+        bool deserialize(const uint8_t* data, size_t len) override;
+    };
+
+    class DmRequestPacket : public Packet {
+    public:
+        std::string targetNick;
+        std::string text;
+        DmRequestPacket() { type = PKT_DM_REQUEST; }
+        void serialize(std::vector<uint8_t>& out) const override;
+        bool deserialize(const uint8_t* data, size_t len) override;
+    };
+
+    class DmMsgPacket : public Packet {
+    public:
+        std::string senderNick;
+        std::string text;
+        DmMsgPacket() { type = PKT_DM_MSG; }
+        void serialize(std::vector<uint8_t>& out) const override;
+        bool deserialize(const uint8_t* data, size_t len) override;
+    };
+
 }

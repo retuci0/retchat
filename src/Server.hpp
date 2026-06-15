@@ -12,12 +12,13 @@
 namespace Retchat {
 
     constexpr int DEFAULT_PORT = 6677;
+    const std::string DEFAULT_BANS_FILE = "bans.txt";
 
     class Client;
 
     class Server {
     public:
-        Server(int port);
+        Server(int port, const std::string& bansFile = "bans.txt");
         ~Server();
         void run();
         void stop();
@@ -31,17 +32,25 @@ namespace Retchat {
 
         // console commands
 
-        void kickClient(int fd);
-        void banNickname(const std::string& nick);
-        void banIp(const std::string& ip);
-        
+        void kickClient(int fd, const std::string& reason = "kicked by admin");
+        void banNickname(const std::string& nick, const std::string& reason = "banned");
+        void banIp(const std::string& ip, const std::string& reason = "banned");
+        void unbanNickname(const std::string& nick);
+        void unbanIp(const std::string& ip);
+
         bool isNicknameBanned(const std::string& nick) const;
         bool isIpBanned(const std::string& ip) const;
 
+        void sendDm(Client* from, const std::string& targetNick, const std::string& text);
+
         std::string listClients() const;
         std::string listRooms() const;
+        std::string listBans() const;
         std::string queryClient(int fd) const;
         std::string queryRoom(const std::string& room) const;
+
+        void loadBans(const std::string& path);
+        void saveBans(const std::string& path) const;
 
     private:
         int port;
@@ -53,6 +62,7 @@ namespace Retchat {
 
         std::unordered_set<std::string> bannedNicks;
         std::unordered_set<std::string> bannedIps;
+        std::string bansFilePath;
 
         std::thread consoleThread;
         void consoleLoop();

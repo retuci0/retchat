@@ -45,7 +45,11 @@ namespace Retchat {
             case PKT_USER_LIST:     return new UserListPacket();
             case PKT_CHAT_MSG:      return new ChatPacket();
             case PKT_SYSTEM_MSG:    return new SystemPacket();
+            case PKT_DM_REQUEST:    return new DmRequestPacket();
+            case PKT_DM_MSG:        return new DmMsgPacket();
             case PKT_DISCONNECT:    return new DisconnectPacket();
+            case PKT_KICK:          return new KickPacket();
+            case PKT_BAN:           return new BanPacket();
             default: return nullptr;
         }
     }
@@ -205,11 +209,57 @@ namespace Retchat {
     }
 
     // --- DisconnectPacket ---
-    void DisconnectPacket::serialize(std::vector<uint8_t>& out) const {
-        // no payload
+    void DisconnectPacket::serialize(std::vector<uint8_t>& out) const {}
+    bool DisconnectPacket::deserialize(const uint8_t* data, size_t len) { return len == 0; }
+
+    // --- KickPacket ---
+    void KickPacket::serialize(std::vector<uint8_t>& out) const {
+        auto s = serializeString(reason);
+        out.insert(out.end(), s.begin(), s.end());
     }
-    bool DisconnectPacket::deserialize(const uint8_t* data, size_t len) {
-        return len == 0;
+    bool KickPacket::deserialize(const uint8_t* data, size_t len) {
+        size_t off = 0;
+        reason = deserializeString(data, off);
+        return true;
+    }
+
+    // --- BanPacket ---
+    void BanPacket::serialize(std::vector<uint8_t>& out) const {
+        auto s = serializeString(reason);
+        out.insert(out.end(), s.begin(), s.end());
+    }
+    bool BanPacket::deserialize(const uint8_t* data, size_t len) {
+        size_t off = 0;
+        reason = deserializeString(data, off);
+        return true;
+    }
+
+    // --- DmRequestPacket ---
+    void DmRequestPacket::serialize(std::vector<uint8_t>& out) const {
+        auto s1 = serializeString(targetNick);
+        auto s2 = serializeString(text);
+        out.insert(out.end(), s1.begin(), s1.end());
+        out.insert(out.end(), s2.begin(), s2.end());
+    }
+    bool DmRequestPacket::deserialize(const uint8_t* data, size_t len) {
+        size_t off = 0;
+        targetNick = deserializeString(data, off);
+        text = deserializeString(data, off);
+        return true;
+    }
+
+    // --- DmMsgPacket ---
+    void DmMsgPacket::serialize(std::vector<uint8_t>& out) const {
+        auto s1 = serializeString(senderNick);
+        auto s2 = serializeString(text);
+        out.insert(out.end(), s1.begin(), s1.end());
+        out.insert(out.end(), s2.begin(), s2.end());
+    }
+    bool DmMsgPacket::deserialize(const uint8_t* data, size_t len) {
+        size_t off = 0;
+        senderNick = deserializeString(data, off);
+        text = deserializeString(data, off);
+        return true;
     }
 
 }

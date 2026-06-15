@@ -21,7 +21,11 @@ namespace Retchat {
         PKT_USER_LIST      = 0x18,  // s2c: list of users in current room
         PKT_CHAT_MSG       = 0x20,  // s2c: chat message
         PKT_SYSTEM_MSG     = 0x21,  // s2c: system message
-        PKT_DISCONNECT     = 0x30   // s2c: disconnected
+        PKT_DM_REQUEST     = 0x22,  // c2s: direct message
+        PKT_DM_MSG         = 0x23,  // s2c: direct message received
+        PKT_DISCONNECT     = 0x30,  // s2c: disconnected
+        PKT_KICK           = 0x31,  // s2c: kicked
+        PKT_BAN            = 0x32   // s2c: banned
     };
 
     // header: type(1), flags(1), length(2 big-endian)

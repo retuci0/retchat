@@ -7,8 +7,10 @@
 #include "Room.hpp"
 #include "Packet.hpp"
 
+#include <algorithm>
 #include <arpa/inet.h>
 #include <csignal>
+#include <fstream>
 #include <iostream>
 #include <netinet/in.h>
 #include <sstream>
@@ -20,8 +22,9 @@
 
 namespace Retchat {
 
-    Server::Server(int p) : port(p) {
+    Server::Server(int p, const std::string& bansFile) : port(p), bansFilePath(bansFile) {
         rooms.emplace("lobby", "lobby");
+        if (!bansFilePath.empty()) loadBans(bansFilePath);
     }
 
     Server::~Server() {
@@ -138,10 +141,7 @@ namespace Retchat {
         while (running) {
             std::cout << "> " << std::flush;
             if (!std::getline(std::cin, line)) {
-                if (running) {
-                    Logger::info("stopping server...");
-                    stop();
-                }
+                if (running) { Logger::info("EOF — stopping server..."); stop(); }
                 break;
             }
             if (line.empty()) continue;
@@ -149,73 +149,78 @@ namespace Retchat {
             std::string cmd;
             iss >> cmd;
 
-            if (cmd == "stop") {
+            if (cmd == CMD_STOP) {
                 Logger::info("stopping server...");
                 stop();
                 break;
-            } else if (cmd == "kick") {
-                int fd;
-                iss >> fd;
-                if (!iss.fail() && fd > 0) {
-                    kickClient(fd);
-                    continue;
-                }
-            } else if (cmd == "ban") {
-                std::string nick;
-                iss >> nick;
-                if (!nick.empty()) {
-                    banNickname(nick);
-                    continue;
-                }
-            } else if (cmd == "ipban") {
-                std::string ip;
-                iss >> ip;
-                if (!ip.empty()) {
-                    banIp(ip);
+
+            } else if (cmd == CMD_KICK) {
+                std::string arg;
+                iss >> arg;
+                if (arg.empty()) { printUsage(cmd); continue; }
+                bool isNum = !arg.empty() && std::all_of(arg.begin(), arg.end(), ::isdigit);
+                if (isNum) {
+                    kickClient(std::stoi(arg));
+                } else {
                     std::lock_guard<std::mutex> lock(mutex);
+                    bool found = false;
                     for (auto& pair : clients) {
-                        if (pair.second->getIp() == ip) {
-                            disconnectClient(pair.second, true);
+                        if (pair.second->getName() == arg) {
+                            Logger::info("kicking " + arg);
+                            KickPacket kp; kp.reason = "pa tu casa";
+                            pair.second->sendPacket(kp);
+                            disconnectClient(pair.second, false);
+                            found = true;
+                            break;
                         }
                     }
-                    continue;
+                    if (!found) Logger::warn("user \"" + arg + "\" not found.");
                 }
-            } else if (cmd == "query") {
-                std::string sub;
-                iss >> sub;
+
+            } else if (cmd == CMD_BAN) {
+                std::string nick; iss >> nick;
+                if (nick.empty()) { printUsage(cmd); continue; }
+                banNickname(nick);
+
+            } else if (cmd == CMD_IPBAN) {
+                std::string ip; iss >> ip;
+                if (ip.empty()) { printUsage(cmd); continue; }
+                banIp(ip);
+
+            } else if (cmd == CMD_UNBAN) {
+                std::string nick; iss >> nick;
+                if (nick.empty()) { printUsage(cmd); continue; }
+                unbanNickname(nick);
+
+            } else if (cmd == CMD_UNBANIP) {
+                std::string ip; iss >> ip;
+                if (ip.empty()) { printUsage(cmd); continue; }
+                unbanIp(ip);
+
+            } else if (cmd == CMD_QUERY) {
+                std::string sub; iss >> sub;
                 if (sub == "room") {
-                    std::string roomName;
-                    iss >> roomName;
-                    if (!roomName.empty()) {
-                        std::string result = queryRoom(roomName);
-                        Logger::info(result);
-                        continue;
-                    }
+                    std::string roomName; iss >> roomName;
+                    if (!roomName.empty()) Logger::info(queryRoom(roomName));
+                    else printUsage(cmd);
                 } else if (sub == "client") {
-                    int fd;
-                    iss >> fd;
-                    if (!iss.fail()) {
-                        std::string result = queryClient(fd);
-                        Logger::info(result);
-                        continue;
-                    }
-                }
-            } else if (cmd == "list") {
-                std::string sub;
-                iss >> sub;
-                if (sub == "rooms") {
-                    std::string result = listRooms();
-                    Logger::info(result);
-                } else if (sub == "clients") {
-                    std::string result = listClients();
-                    Logger::info(result);
-                }
-                continue;
-            } else if (cmd == "help") {
+                    int fd; iss >> fd;
+                    if (!iss.fail()) Logger::info(queryClient(fd));
+                    else printUsage(cmd);
+                } else { printUsage(cmd); }
+
+            } else if (cmd == CMD_LIST) {
+                std::string sub; iss >> sub;
+                if (sub == "rooms")   Logger::info(listRooms());
+                else if (sub == "clients") Logger::info(listClients());
+                else if (sub == "bans")    Logger::info(listBans());
+                else printUsage(cmd);
+
+            } else if (cmd == CMD_HELP) {
                 listCommands();
-                continue;
+
             } else {
-                Logger::warn("unknown command. type \"help\" to see available commands.");
+                Logger::warn("unknown command. type \"help\" for commands.");
                 printUsage(cmd);
             }
         }
@@ -226,37 +231,74 @@ namespace Retchat {
             DisconnectPacket dp;
             client->sendPacket(dp);
         }
-        // forcefully close the socket from server side
         shutdown(client->getSockfd(), SHUT_RDWR);
         close(client->getSockfd());
     }
 
-    void Server::kickClient(int fd) {
+    void Server::kickClient(int fd, const std::string& reason) {
         std::lock_guard<std::mutex> lock(mutex);
         for (auto& pair : clients) {
             if (pair.second->getSockfd() == fd) {
-                Logger::info("kicking client " + pair.second->getName() + " (fd=" + std::to_string(fd) + ")");
-                disconnectClient(pair.second, true);
+                Logger::info("kicking " + pair.second->getName() + " (fd=" + std::to_string(fd) + "): " + reason);
+                KickPacket kp;
+                kp.reason = reason;
+                pair.second->sendPacket(kp);
+                disconnectClient(pair.second, false);
                 return;
             }
         }
         Logger::warn("client with fd=" + std::to_string(fd) + " not found.");
     }
 
-    void Server::banNickname(const std::string& nickname) {
+    void Server::banNickname(const std::string& nickname, const std::string& reason) {
         {
             std::lock_guard<std::mutex> lock(mutex);
             bannedNicks.insert(nickname);
+            // kick any currently connected client with that nick
+            for (auto& pair : clients) {
+                if (pair.second->getName() == nickname) {
+                    Logger::info("banning and kicking " + nickname);
+                    BanPacket bp;
+                    bp.reason = reason;
+                    pair.second->sendPacket(bp);
+                    disconnectClient(pair.second, false);
+                }
+            }
         }
         Logger::info("banned nickname: " + nickname);
+        if (!bansFilePath.empty()) saveBans(bansFilePath);
     }
 
-    void Server::banIp(const std::string& ip) {
+    void Server::banIp(const std::string& ip, const std::string& reason) {
         {
             std::lock_guard<std::mutex> lock(mutex);
             bannedIps.insert(ip);
+            for (auto& pair : clients) {
+                if (pair.second->getIp() == ip) {
+                    Logger::info("banning and kicking IP " + ip);
+                    BanPacket bp;
+                    bp.reason = reason;
+                    pair.second->sendPacket(bp);
+                    disconnectClient(pair.second, false);
+                }
+            }
         }
         Logger::info("banned IP: " + ip);
+        if (!bansFilePath.empty()) saveBans(bansFilePath);
+    }
+
+    void Server::unbanNickname(const std::string& nick) {
+        std::lock_guard<std::mutex> lock(mutex);
+        bannedNicks.erase(nick);
+        Logger::info("unbanned nickname: " + nick);
+        if (!bansFilePath.empty()) saveBans(bansFilePath);
+    }
+
+    void Server::unbanIp(const std::string& ip) {
+        std::lock_guard<std::mutex> lock(mutex);
+        bannedIps.erase(ip);
+        Logger::info("unbanned IP: " + ip);
+        if (!bansFilePath.empty()) saveBans(bansFilePath);
     }
 
     bool Server::isIpBanned(const std::string& ip) const {
@@ -269,6 +311,56 @@ namespace Retchat {
         return bannedNicks.find(nick) != bannedNicks.end();
     }
 
+    std::string Server::listBans() const {
+        std::lock_guard<std::mutex> lock(mutex);
+        std::string result = "banned nicks: ";
+        for (const auto& n : bannedNicks) result += n + " ";
+        result += "\nbanned IPs: ";
+        for (const auto& ip : bannedIps) result += ip + " ";
+        return result;
+    }
+
+    void Server::sendDm(Client* from, const std::string& targetNick, const std::string& text) {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (auto& pair : clients) {
+            if (pair.second->getName() == targetNick) {
+                DmMsgPacket dm;
+                dm.senderNick = from->getName();
+                dm.text = text;
+                pair.second->sendPacket(dm);
+                return;
+            }
+        }
+        // target not found
+        SystemPacket err;
+        err.isError = true;
+        err.text = "usuario \"" + targetNick + "\" no encontrado.";
+        from->sendPacket(err);
+    }
+
+    void Server::loadBans(const std::string& path) {
+        std::ifstream f(path);
+        if (!f.is_open()) return;
+        std::string line;
+        while (std::getline(f, line)) {
+            if (line.empty()) continue;
+            if (line.substr(0, 5) == "nick:") {
+                bannedNicks.insert(line.substr(5));
+            } else if (line.substr(0, 3) == "ip:") {
+                bannedIps.insert(line.substr(3));
+            }
+        }
+        Logger::info("loaded bans from " + path +
+                     " (" + std::to_string(bannedNicks.size()) + " nicks, " +
+                     std::to_string(bannedIps.size()) + " IPs)");
+    }
+
+    void Server::saveBans(const std::string& path) const {
+        std::ofstream f(path, std::ios::trunc);
+        if (!f.is_open()) { Logger::warn("could not write bans to " + path); return; }
+        for (const auto& n : bannedNicks) f << "nick:" << n << "\n";
+        for (const auto& ip : bannedIps)  f << "ip:"   << ip  << "\n";
+    }
     std::string Server::listRooms() const {
         std::lock_guard<std::mutex> lock(mutex);
         std::string result = "rooms: ";
@@ -317,9 +409,10 @@ namespace Retchat {
 
 int main(int argc, char** argv) {
     int port = (argc > 1) ? atoi(argv[1]) : Retchat::DEFAULT_PORT;
+    std::string bansFile = (argc > 2) ? argv[2] : Retchat::DEFAULT_BANS_FILE;
     std::signal(SIGPIPE, SIG_IGN);
     Retchat::DH::init();
-    Retchat::Server server(port);
+    Retchat::Server server(port, bansFile);
     server.run();
     Retchat::DH::free();
     return 0;

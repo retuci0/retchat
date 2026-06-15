@@ -256,7 +256,7 @@ namespace Retchat {
                     if (newNick.length() < 1) {
                         invalid = true;
                         errorMsg = "el nombre no puede estar vacío.";
-                    } else if (newNick.length() > MAX_NICK_LENGTH) {  // max length
+                    } else if (newNick.length() > MAX_NICK_LENGTH) {
                         invalid = true;
                         errorMsg = "el nombre no puede exceder " + std::to_string(MAX_NICK_LENGTH) + " caracteres.";
                     } else if (newNick.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-") != std::string::npos) {
@@ -265,6 +265,9 @@ namespace Retchat {
                     } else if (newNick == name) {
                         invalid = true;
                         errorMsg = "ya tienes ese nombre.";
+                    } else if (server->isNicknameBanned(newNick)) {
+                        invalid = true;
+                        errorMsg = "ese nombre está baneado.";
                     }
                 }
                 
@@ -331,6 +334,18 @@ namespace Retchat {
                 broadcast.sender = name;
                 broadcast.text = chat->text;
                 server->broadcastToRoom(room, this, broadcast);
+                break;
+            }
+            case PKT_DM_REQUEST: {
+                auto* dm = (DmRequestPacket*) pkt;
+                if (dm->targetNick == name) {
+                    SystemPacket err;
+                    err.isError = true;
+                    err.text = "no puedes enviarte un DM a ti mismo.";
+                    sendPacket(err);
+                } else {
+                    server->sendDm(this, dm->targetNick, dm->text);
+                }
                 break;
             }
             default:
