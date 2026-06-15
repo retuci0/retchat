@@ -32,6 +32,10 @@ namespace Retchat {
         }
     }
 
+    std::vector<Client*> Room::getUsers() const {
+        return clients;
+    }
+
     std::vector<std::string> Room::getUserNames() const {
         std::lock_guard<std::mutex> lock(mutex);
         std::vector<std::string> names;

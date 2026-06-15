@@ -20,7 +20,9 @@ constexpr int MAX_NICK_LENGTH = 20;
 
 namespace Retchat {
 
-    Client::Client(int fd, Server* srv) : sockfd(fd), server(srv), sendCounter(0), recvCounter(0), connected(true) {
+    Client::Client(int fd, Server* srv, const std::string& ip) 
+        : sockfd(fd), server(srv), ip(ip), sendCounter(0), recvCounter(0), connected(true) 
+    {
         name = "usuario" + std::to_string(fd);
         room = "lobby";
         lastRecvTime = std::chrono::steady_clock::now();

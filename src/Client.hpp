@@ -15,7 +15,7 @@ namespace Retchat {
 
     class Client {
     public:
-        Client(int sockfd, Server* server);
+        Client(int sockfd, Server* server, const std::string& ip);
         ~Client();
         void start();
         void sendPacket(const Packet& pkt);
@@ -23,6 +23,7 @@ namespace Retchat {
         bool isConnected() const { return connected; }
 
         int getSockfd() const { return sockfd; }
+        std::string getIp() const { return ip; }
         std::string getName() const { return name; }
         std::string getRoom() const { return room; }
         void setName(const std::string& n) { name = n; }
@@ -33,6 +34,8 @@ namespace Retchat {
         bool handshake();
         bool readFrame(std::vector<uint8_t>& outPlain);
         void processPacket(Packet* pkt);
+
+        std::string ip;
 
         int sockfd;
         Server* server;

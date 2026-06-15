@@ -17,6 +17,7 @@ namespace Retchat {
         void addClient(Client* client);
         void removeClient(Client* client);
         void broadcast(const Packet& pkt, Client* exclude);
+        std::vector<Client*> getUsers() const;
         std::vector<std::string> getUserNames() const;
         const std::string& getName() const { return name; }
         bool hasClient(Client* client) const;

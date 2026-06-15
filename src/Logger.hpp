@@ -61,4 +61,5 @@ namespace Logger {
                   << Color::Modifier(Color::FG_DEFAULT)
                   << std::endl;
     }
+
 }
