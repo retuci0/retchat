@@ -8,6 +8,7 @@
 #include "Packet.hpp"
 
 #include <arpa/inet.h>
+#include <csignal>
 #include <iostream>
 #include <netinet/in.h>
 #include <sstream>
@@ -313,6 +314,7 @@ namespace Retchat {
 
 int main(int argc, char* argv[]) {
     int port = (argc > 1) ? atoi(argv[1]) : Retchat::DEFAULT_PORT;
+    std::signal(SIGPIPE, SIG_IGN);
     Retchat::DH::init();
     Retchat::Server server(port);
     server.run();
