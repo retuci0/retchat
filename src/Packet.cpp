@@ -198,16 +198,31 @@ namespace Retchat {
     // --- SystemPacket ---
     void SystemPacket::serialize(std::vector<uint8_t>& out) const {
         out.push_back(isError ? 1 : 0);
-        auto s = serializeString(text);
-        out.insert(out.end(), s.begin(), s.end());
+        // code (2 bytes, big-endian)
+        out.push_back((code >> 8) & 0xFF);
+        out.push_back(code & 0xFF);
+        // param count
+        out.push_back(static_cast<uint8_t>(params.size()));
+        for (const auto& p : params) {
+            auto s = serializeString(p);
+            out.insert(out.end(), s.begin(), s.end());
+        }
     }
     bool SystemPacket::deserialize(const uint8_t* data, size_t len) {
         size_t off = 0;
-        isError = data[off++] != 0;
-        text = deserializeString(data, off);
+        if (off >= len) return false;
+        isError = (data[off++] != 0);
+        if (off + 2 > len) return false;
+        code = (data[off] << 8) | data[off + 1];
+        off += 2;
+        if (off >= len) return false;
+        uint8_t paramCount = data[off++];
+        params.clear();
+        for (uint8_t i = 0; i < paramCount; ++i) {
+            params.push_back(deserializeString(data, off));
+        }
         return off == len;
     }
-
     // --- DisconnectPacket ---
     void DisconnectPacket::serialize(std::vector<uint8_t>& out) const {}
     bool DisconnectPacket::deserialize(const uint8_t* data, size_t len) { return len == 0; }

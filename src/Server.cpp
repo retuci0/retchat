@@ -334,7 +334,8 @@ namespace Retchat {
         // target not found
         SystemPacket err;
         err.isError = true;
-        err.text = "usuario \"" + targetNick + "\" no encontrado.";
+        err.code = MSG_DM_TARGET_NOT_FOUND;
+        err.params = { targetNick };
         from->sendPacket(err);
     }
 
@@ -361,6 +362,7 @@ namespace Retchat {
         for (const auto& n : bannedNicks) f << "nick:" << n << "\n";
         for (const auto& ip : bannedIps)  f << "ip:"   << ip  << "\n";
     }
+    
     std::string Server::listRooms() const {
         std::lock_guard<std::mutex> lock(mutex);
         std::string result = "rooms: ";

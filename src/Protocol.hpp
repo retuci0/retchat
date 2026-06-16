@@ -35,4 +35,18 @@ namespace Retchat {
         uint16_t length;
     } __attribute__((packed));
 
+
+    enum SystemMessageCode : uint16_t {
+        MSG_WELCOME              = 1,
+        MSG_NICK_EMPTY           = 2,
+        MSG_NICK_TOO_LONG        = 3,
+        MSG_NICK_INVALID_CHARS   = 4,
+        MSG_NICK_SAME            = 5,
+        MSG_NICK_BANNED          = 6,
+        MSG_NICK_TAKEN           = 7,
+        MSG_JOIN_ALREADY         = 8,
+        MSG_JOIN_NAME_TAKEN      = 9,
+        MSG_DM_TARGET_NOT_FOUND  = 10,
+    };
+
 }

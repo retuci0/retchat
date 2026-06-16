@@ -120,8 +120,10 @@ namespace Retchat {
 
     class SystemPacket : public Packet {
     public:
-        bool isError;
-        std::string text;
+        bool isError = false;
+        uint16_t code = 0;
+        std::vector<std::string> params;
+
         SystemPacket() { type = PKT_SYSTEM_MSG; }
         void serialize(std::vector<uint8_t>& out) const override;
         bool deserialize(const uint8_t* data, size_t len) override;

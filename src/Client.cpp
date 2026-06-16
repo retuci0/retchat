@@ -2,6 +2,7 @@
 
 #include "DiffieHellman.hpp"
 #include "Logger.hpp"
+#include "Protocol.hpp"
 #include "Server.hpp"
 
 #include <openssl/bn.h>
@@ -155,14 +156,15 @@ namespace Retchat {
         // welcome message
         SystemPacket welcome;
         welcome.isError = false;
-        welcome.text = "buenas " + name + ", estás en la sala \"" + room + "\".";
+        welcome.code = MSG_WELCOME;
+        welcome.params = { name, room };
         sendPacket(welcome);
 
         server->getRoom(room).addClient(this);
 
         JoinNotifyPacket joinNotify;
         joinNotify.nick = name;
-        server->broadcastToRoom(room, this, joinNotify);
+        server->broadcastToRoom(room, nullptr, joinNotify);
 
         struct pollfd pfd;
         pfd.fd = sockfd;
@@ -244,37 +246,41 @@ namespace Retchat {
                 std::string newNick = req->newNick;
                 
                 bool invalid = false;
-                std::string errorMsg;
+                SystemMessageCode code = MSG_NICK_EMPTY;
+                std::vector<std::string> params;
                 
                 size_t start = newNick.find_first_not_of(" \t\n\r");
                 size_t end = newNick.find_last_not_of(" \t\n\r");
+                
                 if (start == std::string::npos) {
                     invalid = true;
-                    errorMsg = "el nombre no puede estar vacío.";
+                    code = MSG_NICK_EMPTY;
                 } else {
                     newNick = newNick.substr(start, end - start + 1);
                     if (newNick.length() < 1) {
                         invalid = true;
-                        errorMsg = "el nombre no puede estar vacío.";
+                        code = MSG_NICK_EMPTY;
                     } else if (newNick.length() > MAX_NICK_LENGTH) {
                         invalid = true;
-                        errorMsg = "el nombre no puede exceder " + std::to_string(MAX_NICK_LENGTH) + " caracteres.";
+                        code = MSG_NICK_TOO_LONG;
+                        params.push_back(std::to_string(MAX_NICK_LENGTH));
                     } else if (newNick.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-") != std::string::npos) {
                         invalid = true;
-                        errorMsg = "el nombre solo puede contener letras, números, guión y guión bajo.";
+                        code = MSG_NICK_INVALID_CHARS;
                     } else if (newNick == name) {
                         invalid = true;
-                        errorMsg = "ya tienes ese nombre.";
+                        code = MSG_NICK_SAME;
                     } else if (server->isNicknameBanned(newNick)) {
                         invalid = true;
-                        errorMsg = "ese nombre está baneado.";
+                        code = MSG_NICK_BANNED;
                     }
                 }
                 
                 if (invalid) {
                     SystemPacket err;
                     err.isError = true;
-                    err.text = errorMsg;
+                    err.code = code;
+                    err.params = params;
                     sendPacket(err);
                     break;
                 }
@@ -282,7 +288,8 @@ namespace Retchat {
                 if (server->isNicknameTaken(newNick, room, this)) {
                     SystemPacket err;
                     err.isError = true;
-                    err.text = "el nombre \"" + newNick + "\" ya está en uso en esta sala.";
+                    err.code = MSG_NICK_TAKEN;
+                    err.params = { newNick };
                     sendPacket(err);
                 } else {
                     std::string old = name;
@@ -302,12 +309,13 @@ namespace Retchat {
                 if (req->roomName == room) {
                     SystemPacket err;
                     err.isError = true;
-                    err.text = "ya estás en esa sala.";
+                    err.code = MSG_JOIN_ALREADY;
                     sendPacket(err);
                 } else if (server->isNicknameTaken(name, req->roomName, nullptr)) {
                     SystemPacket err;
                     err.isError = true;
-                    err.text = "tu nombre ya está cogido en la sala \"" + req->roomName + "\".";
+                    err.code = MSG_JOIN_NAME_TAKEN;
+                    err.params = { req->roomName };
                     sendPacket(err);
                 } else {
                     std::string oldRoom = room;
@@ -338,14 +346,7 @@ namespace Retchat {
             }
             case PKT_DM_REQUEST: {
                 auto* dm = (DmRequestPacket*) pkt;
-                if (dm->targetNick == name) {
-                    SystemPacket err;
-                    err.isError = true;
-                    err.text = "no puedes enviarte un DM a ti mismo.";
-                    sendPacket(err);
-                } else {
-                    server->sendDm(this, dm->targetNick, dm->text);
-                }
+                server->sendDm(this, dm->targetNick, dm->text);
                 break;
             }
             default:
