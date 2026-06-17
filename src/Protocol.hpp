@@ -23,6 +23,7 @@ namespace Retchat {
         PKT_SYSTEM_MSG     = 0x21,  // s2c: system message
         PKT_DM_REQUEST     = 0x22,  // c2s: direct message
         PKT_DM_MSG         = 0x23,  // s2c: direct message received
+        PKT_IMAGE_MSG      = 0x24,  // image payload
         PKT_DISCONNECT     = 0x30,  // s2c: disconnected
         PKT_KICK           = 0x31,  // s2c: kicked
         PKT_BAN            = 0x32   // s2c: banned
@@ -47,6 +48,7 @@ namespace Retchat {
         MSG_JOIN_ALREADY         = 8,
         MSG_JOIN_NAME_TAKEN      = 9,
         MSG_DM_TARGET_NOT_FOUND  = 10,
+        MSG_IMAGE_UNSUPPORTED    = 11,
     };
 
 }

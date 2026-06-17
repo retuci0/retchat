@@ -8,6 +8,7 @@
 
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
+#include <vector>
 
 
 static BIGNUM* dh_prime = nullptr;
@@ -94,7 +95,7 @@ void Retchat::DH::deriveKeystream(uint8_t* keystream, size_t len, const uint8_t*
 }
 
 void Retchat::DH::xorCrypt(uint8_t* data, size_t len, const uint8_t* key, uint64_t counter) {
-    uint8_t keystream[4096]; // MAX_MSG_LEN
-    deriveKeystream(keystream, len, key, counter);
+    std::vector<uint8_t> keystream(len);
+    deriveKeystream(keystream.data(), len, key, counter);
     for (size_t i = 0; i < len; i++) data[i] ^= keystream[i];
 }

@@ -32,7 +32,7 @@ namespace Retchat {
 
     Packet* Packet::create(PacketType type) {
         switch (type) {
-            case PKT_KEEPALIVE:     return new KeepAliveAckPacket();
+            case PKT_KEEPALIVE:     return new KeepAlivePacket();
             case PKT_KEEPALIVE_ACK: return new KeepAliveAckPacket();
             case PKT_NICK_REQUEST:  return new NickRequestPacket();
             case PKT_NICK_ACK:      return new NickAckPacket();
@@ -47,6 +47,7 @@ namespace Retchat {
             case PKT_SYSTEM_MSG:    return new SystemPacket();
             case PKT_DM_REQUEST:    return new DmRequestPacket();
             case PKT_DM_MSG:        return new DmMsgPacket();
+            case PKT_IMAGE_MSG:     return new ImagePacket();
             case PKT_DISCONNECT:    return new DisconnectPacket();
             case PKT_KICK:          return new KickPacket();
             case PKT_BAN:           return new BanPacket();
@@ -273,6 +274,31 @@ namespace Retchat {
         size_t off = 0;
         senderNick = deserializeString(data, off);
         text = deserializeString(data, off);
+        return true;
+    }
+
+    // --- ImagePacket ---
+    void ImagePacket::serialize(std::vector<uint8_t>& out) const {
+        auto s1 = serializeString(sender);
+        auto s2 = serializeString(target);
+        auto s3 = serializeString(mimeType);
+        auto s4 = serializeString(fileName);
+        out.insert(out.end(), s1.begin(), s1.end());
+        out.insert(out.end(), s2.begin(), s2.end());
+        out.insert(out.end(), s3.begin(), s3.end());
+        out.insert(out.end(), s4.begin(), s4.end());
+        out.insert(out.end(), imageData.begin(), imageData.end());
+    }
+    bool ImagePacket::deserialize(const uint8_t* data, size_t len) {
+        size_t off = 0;
+        sender   = deserializeString(data, off);
+        target   = deserializeString(data, off);
+        mimeType = deserializeString(data, off);
+        fileName = deserializeString(data, off);
+        // remaining bytes are the image
+        if (off < len) {
+            imageData.assign(data + off, data + len);
+        }
         return true;
     }
 

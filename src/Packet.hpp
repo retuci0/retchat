@@ -170,4 +170,17 @@ namespace Retchat {
         bool deserialize(const uint8_t* data, size_t len) override;
     };
 
+    class ImagePacket : public Packet {
+    public:
+        std::string sender;
+        std::string target;  // empty for room, otherwise recipient name (for dms)
+        std::string mimeType;  // e.g. "image/png"
+        std::string fileName;  // may be empty
+        std::vector<uint8_t> imageData;
+
+        ImagePacket() { type = PKT_IMAGE_MSG; }
+        void serialize(std::vector<uint8_t>& out) const override;
+        bool deserialize(const uint8_t* data, size_t len) override;
+    };
+
 }

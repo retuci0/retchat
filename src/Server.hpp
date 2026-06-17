@@ -25,6 +25,7 @@ namespace Retchat {
 
         void removeClient(Client* client);
         void broadcastToRoom(const std::string& roomName, Client* exclude, const Packet& pkt);
+        void sendImageDm(Client* from, const std::string& targetNick, const ImagePacket& imgPkt);
         bool isNicknameTaken(const std::string& nick, const std::string& roomName, Client* exclude);
         
         Room& getRoom(const std::string& name);

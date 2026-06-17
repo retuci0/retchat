@@ -18,6 +18,7 @@
 
 
 constexpr int MAX_NICK_LENGTH = 20;
+constexpr size_t MAX_PACKET_SIZE = 2 * 1024 * 1024;  // 2 MB
 
 namespace Retchat {
 
@@ -94,15 +95,15 @@ namespace Retchat {
             hmacRead += r;
         }
 
-        uint16_t netLen;
+        uint32_t netLen;   // now 32‑bit
         size_t lenRead = 0;
-        while (lenRead < 2) {
-            ssize_t r = recv(sockfd, (char*)&netLen + lenRead, 2 - lenRead, 0);
+        while (lenRead < 4) {
+            ssize_t r = recv(sockfd, (char*)&netLen + lenRead, 4 - lenRead, 0);
             if (r <= 0) return false;
             lenRead += r;
         }
-        uint16_t msgLen = ntohs(netLen);
-        if (msgLen == 0 || msgLen > 4096) return false;
+        uint32_t msgLen = ntohl(netLen);
+        if (msgLen == 0 || msgLen > MAX_PACKET_SIZE) return false;
 
         std::vector<uint8_t> ciphertext(msgLen);
         size_t total = 0;
@@ -116,7 +117,7 @@ namespace Retchat {
         unsigned int hmacLen;
         uint8_t expectedHmac[32];
         HMAC(EVP_sha256(), encKey, 32, ciphertext.data(), msgLen, expectedHmac, &hmacLen);
-        if (CRYPTO_memcmp(recvHmac, expectedHmac, 32) != 0) return true;  // discard, but continue
+        if (CRYPTO_memcmp(recvHmac, expectedHmac, 32) != 0) return false;  // do not discard, instead kill connection
 
         // decrypt
         DH::xorCrypt(ciphertext.data(), msgLen, encKey, recvCounter);
@@ -125,28 +126,27 @@ namespace Retchat {
         return true;
     }
 
-    void Client::sendPacket(const Packet& pkt) {
-        std::vector<uint8_t> payload;
-        payload.push_back(pkt.type);
-        pkt.serialize(payload);
+void Client::sendPacket(const Packet& pkt) {
+    std::vector<uint8_t> payload;
+    payload.push_back(pkt.type);
+    pkt.serialize(payload);
 
-        // encrypt
-        std::vector<uint8_t> ciphertext = payload;
-        DH::xorCrypt(ciphertext.data(), ciphertext.size(), encKey, sendCounter);
-        sendCounter++;
+    // encrypt
+    std::vector<uint8_t> ciphertext = payload;
+    DH::xorCrypt(ciphertext.data(), ciphertext.size(), encKey, sendCounter);
+    sendCounter++;
 
-        // HMAC
-        uint8_t hmac[32];
-        unsigned int hmacLen;
-        HMAC(EVP_sha256(), encKey, 32, ciphertext.data(), ciphertext.size(), hmac, &hmacLen);
+    // HMAC
+    uint8_t hmac[32];
+    unsigned int hmacLen;
+    HMAC(EVP_sha256(), encKey, 32, ciphertext.data(), ciphertext.size(), hmac, &hmacLen);
 
-        uint16_t netLen = htons(ciphertext.size());
-        std::lock_guard<std::mutex> lock(sendMutex);
-        send(sockfd, hmac, 32, 0);
-        send(sockfd, &netLen, 2, 0);
-        send(sockfd, ciphertext.data(), ciphertext.size(), 0);
-    }
-
+    uint32_t netLen = htonl(ciphertext.size());
+    std::lock_guard<std::mutex> lock(sendMutex);
+    send(sockfd, hmac, 32, 0);
+    send(sockfd, &netLen, 4, 0);
+    send(sockfd, ciphertext.data(), ciphertext.size(), 0);
+}
     void Client::run() {
         if (!handshake()) {
             server->removeClient(this);
@@ -178,7 +178,7 @@ namespace Retchat {
             auto now = std::chrono::steady_clock::now();
             double idleSec = std::chrono::duration<double>(now - lastRecvTime).count();
 
-            // If waiting for ack and timeout exceeded, disconnect
+            // if waiting for ack and timeout exceeded, disconnect
             if (waitingForAck) {
                 double sinceSent = std::chrono::duration<double>(now - lastKeepAliveSent).count();
                 if (sinceSent > KEEPALIVE_WAIT_SEC) {
@@ -242,7 +242,7 @@ namespace Retchat {
                 break;
             }
             case PKT_NICK_REQUEST: {
-                auto* req = (NickRequestPacket*)pkt;
+                auto* req = (NickRequestPacket*) pkt;
                 std::string newNick = req->newNick;
                 
                 bool invalid = false;
@@ -305,7 +305,7 @@ namespace Retchat {
                 break;
             }
             case PKT_JOIN_REQUEST: {
-                auto* req = (JoinRequestPacket*)pkt;
+                auto* req = (JoinRequestPacket*) pkt;
                 if (req->roomName == room) {
                     SystemPacket err;
                     err.isError = true;
@@ -347,6 +347,31 @@ namespace Retchat {
             case PKT_DM_REQUEST: {
                 auto* dm = (DmRequestPacket*) pkt;
                 server->sendDm(this, dm->targetNick, dm->text);
+                break;
+            }
+            case PKT_IMAGE_MSG: {
+                auto* img = (ImagePacket*) pkt;
+
+                static const std::unordered_set<std::string> allowed = {
+                    "image/png", "image/jpeg", "image/webp", "image/avif"
+                };
+                if (allowed.find(img->mimeType) == allowed.end()) {
+                    SystemPacket err;
+                    err.isError = true;
+                    err.code = MSG_IMAGE_UNSUPPORTED;
+                    err.params = { img->mimeType };
+                    sendPacket(err);
+                    break;
+                }
+                img->sender = name;
+
+                if (img->target.empty()) {
+                    // doom message
+                    server->broadcastToRoom(room, this, *img);
+                } else {
+                    // direct message
+                    server->sendImageDm(this, img->target, *img);
+                }
                 break;
             }
             default:

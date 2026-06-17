@@ -107,6 +107,21 @@ namespace Retchat {
         getRoom(roomName).broadcast(pkt, exclude);
     }
 
+    void Server::sendImageDm(Client* from, const std::string& targetNick, const ImagePacket& imgPkt) {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (auto& pair : clients) {
+            if (pair.second->getName() == targetNick) {
+                pair.second->sendPacket(imgPkt);
+                return;
+            }
+        }
+        SystemPacket err;
+        err.isError = true;
+        err.code = MSG_DM_TARGET_NOT_FOUND;
+        err.params = { targetNick };
+        from->sendPacket(err);
+    }
+
     bool Server::isNicknameTaken(const std::string& nick, const std::string& roomName, Client* exclude) {
         auto& room = getRoom(roomName);
         for (const std::string& name : room.getUserNames()) {
