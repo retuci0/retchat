@@ -83,6 +83,7 @@ namespace Retchat {
     error:
         BN_free(server_priv); BN_free(server_pub);
         BN_free(client_pub); BN_free(shared);
+        Logger::error("handshake failed for fd=" + std::to_string(sockfd) + " (" + name + ")");
         return false;
     }
 
@@ -95,7 +96,7 @@ namespace Retchat {
             hmacRead += r;
         }
 
-        uint32_t netLen;   // now 32‑bit
+        uint32_t netLen;
         size_t lenRead = 0;
         while (lenRead < 4) {
             ssize_t r = recv(sockfd, (char*)&netLen + lenRead, 4 - lenRead, 0);

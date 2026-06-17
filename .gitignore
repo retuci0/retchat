@@ -4,3 +4,4 @@ bin/
 *.o
 build/
 *.zip
+bans.txt
