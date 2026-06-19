@@ -207,8 +207,7 @@ namespace Retchat {
     }
     bool ChatPacket::deserialize(const uint8_t* data, size_t len) {
         size_t off = 0;
-        if (!deserializeString(data, len, off, sender)) return false;
-        if (!deserializeString(data, len, off, text))   return false;
+        if (!deserializeString(data, len, off, text)) return false;
         return off == len;
     }
 
